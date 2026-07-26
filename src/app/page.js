@@ -1,8 +1,9 @@
 "use client";
 import ChatMessage from "../components/ChatMessage";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Home() {
+  const messagesEndRef = useRef(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([
     {
@@ -10,6 +11,25 @@ export default function Home() {
       content: "こんにちは！何でも聞いてください😊",
     }
   ]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("messages");
+    if (saved) {
+      setMessages(JSON.parse(saved));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "messages",
+      JSON.stringify(messages)
+    );
+  }, [messages]);
+
   const [loading, setLoading] = useState(false);
 
   async function sendMessage() {
@@ -70,6 +90,21 @@ export default function Home() {
         <h1 className="text-3xl font-bold mb-6 text-center">
           🤖 AI Buddy
         </h1>
+        <button
+          onClick={() => {
+            const initialMessages = [
+              {
+                role: "assistant",
+                content: "こんにちは！何でも聞いてください😊",
+              },
+            ];
+            setMessages(initialMessages);
+
+            localStorage.removeItem("messages");
+          }}
+          className="mb-4 rounded-lg bg-red-500 px-4 py-2 text-white">
+            新しいチャット
+          </button>
 
         <div className="border rounded-lg p-4 h-80 overflow-y-auto mb-4">
           {messages.map((msg, index) => (
@@ -79,6 +114,7 @@ export default function Home() {
               content={msg.content}
             />
           ))}
+          <div ref={messagesEndRef} />
         </div>
 
         <textarea
