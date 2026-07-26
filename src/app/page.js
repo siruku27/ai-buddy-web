@@ -81,22 +81,26 @@ export default function Home() {
           ))}
         </div>
 
-        <input
-          className="w-full border rounded-lg p-3 mb-3"
+        <textarea
+          className="w-full border rounded-lg p-3 mb-3 resize-none"
+          rows={3}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter"){
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
               sendMessage();
             }
           }}
-          placeholder="質問を入力..."
+          placeholder="メッセージを入力...　(Enterで送信、Shift + Enterで改行)"
         />
 
         <button
           onClick={sendMessage}
-          disabled={loading}
-          className="w-full bg-blue-500 text-white rounded-lg p-3"
+          disabled={loading || !message.trim()}
+          className="w-full bg-blue-500 text-white rounded-lg p-3
+                     disabled:bg-gray-400
+                     disabled:cursor-not-allowed"
         >
           {loading ? "考え中..." : "送信"}
         </button>
