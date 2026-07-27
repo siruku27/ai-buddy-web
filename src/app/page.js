@@ -1,8 +1,12 @@
 "use client";
 import ChatMessage from "../components/ChatMessage";
+import ChatHeader from "../components/ChatHeader";
+import ChatWindow from "../components/ChatWindow";
+import ChatInput from "../components/ChatInput";
 import { useState, useEffect, useRef } from "react";
 
 export default function Home() {
+  const [darkMode, setDarkMode] = useState(false);
   const messagesEndRef = useRef(null);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([
@@ -11,6 +15,22 @@ export default function Home() {
       content: "こんにちは！何でも聞いてください😊",
     }
   ]);
+
+  // 起動時に読み込む
+  useEffect(() => {
+  const savedTheme = localStorage.getItem("theme");
+  if (savedTheme === "dark") {
+    setDarkMode(true);
+    }
+  }, []);
+
+// テーマ変更時に保存
+  useEffect(() => {
+   localStorage.setItem(
+    "theme",
+    darkMode ? "dark" : "light"
+    );
+  }, [darkMode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -84,63 +104,49 @@ export default function Home() {
 }
 
   return (
-    <main className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6">
-
-        <h1 className="text-3xl font-bold mb-6 text-center">
-          🤖 AI Buddy
-        </h1>
-        <button
-          onClick={() => {
-            const initialMessages = [
-              {
-                role: "assistant",
-                content: "こんにちは！何でも聞いてください😊",
-              },
-            ];
-            setMessages(initialMessages);
-
-            localStorage.removeItem("messages");
-          }}
-          className="mb-4 rounded-lg bg-red-500 px-4 py-2 text-white">
-            新しいチャット
-          </button>
-
-        <div className="border rounded-lg p-4 h-80 overflow-y-auto mb-4">
-          {messages.map((msg, index) => (
-            <ChatMessage
-              key={index}
-              role={msg.role}
-              content={msg.content}
-            />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <textarea
-          className="w-full border rounded-lg p-3 mb-3 resize-none"
-          rows={3}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              sendMessage();
-            }
-          }}
-          placeholder="メッセージを入力...　(Enterで送信、Shift + Enterで改行)"
+    <main
+      className={`min-h-screen flex items-center justify-center ${
+        darkMode
+          ? "bg-gray-900 text-white"
+          : "bg-gray-100 text-black"
+        }`}
+    >
+      <div className={`w-full max-w-2xl rounded-xl shadow-lg p-6 ${
+        darkMode
+          ? "bg-gray-800 text-white"
+          : "bg-white text-black"
+        }`}>
+        <ChatHeader
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
         />
-
+        <ChatWindow
+          darkMode={darkMode}
+          ChatMessage={ChatMessage}
+          messages={messages}
+          setMessages={setMessages}
+          messagesEndRef={messagesEndRef}
+        />
+        <ChatInput
+          darkMode={darkMode}
+          message={message}
+          setMessage={setMessage}
+          sendMessage={sendMessage}
+        />
         <button
           onClick={sendMessage}
           disabled={loading || !message.trim()}
-          className="w-full bg-blue-500 text-white rounded-lg p-3
-                     disabled:bg-gray-400
-                     disabled:cursor-not-allowed"
+          className={`w-full rounded-lg p-3 text-white ${
+            loading
+              ? "bg-gray-500"
+              : "bg-blue-600 hover:bg-blue-700"
+            }
+          disabled:bg-gray-400
+          disabled:cursor-not-allowed
+          `}
         >
-          {loading ? "考え中..." : "送信"}
+         {loading ? "考え中..." : "送信"}
         </button>
-
       </div>
     </main>
   );
