@@ -52,17 +52,30 @@ export default function Home() {
 
   const [loading, setLoading] = useState(false);
 
-  async function sendMessage() {
+async function sendMessage() {
   if (!message.trim()) return;
 
-  // ユーザーのメッセージを追加
   const currentMessage = message;
+
   const userMessage = {
     role: "user",
     content: currentMessage,
   };
 
-  setMessages((prev) => [...prev, userMessage]);
+  const loadingMessage = {
+    role: "assistant",
+    content: "考えています...",
+    loading: true,
+  };
+
+  // ユーザーと「考えています...」を追加
+  setMessages((prev) => [
+    ...prev,
+    userMessage,
+    loadingMessage,
+  ]);
+
+  setMessage("");
   setLoading(true);
 
   try {
@@ -78,26 +91,31 @@ export default function Home() {
 
     const data = await res.json();
 
-     // AIの返事を追加
-    setMessages((prev) => [
-      ...prev,
-      {
+    // 最後の「考えています...」をAIの返答に置き換える
+    setMessages((prev) => {
+      const newMessages = [...prev];
+
+      newMessages[newMessages.length - 1] = {
         role: "assistant",
         content: data.reply,
-      },
-    ]);
+      };
 
-    setMessage("");
+      return newMessages;
+    });
+
   } catch (error) {
     console.error(error);
 
-    setMessages((prev) => [
-      ...prev,
-      {
+    setMessages((prev) => {
+      const newMessages = [...prev];
+
+      newMessages[newMessages.length - 1] = {
         role: "assistant",
         content: "エラーが発生しました。",
-      },
-    ]);
+      };
+
+      return newMessages;
+    });
   }
 
   setLoading(false);

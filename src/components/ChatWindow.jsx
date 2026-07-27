@@ -23,9 +23,10 @@ export default function ChatWindow({ darkMode, ChatMessage, messages, setMessage
              }`}>
               {messages.map((msg, index) => (
                 <ChatMessage
-                  key={index}
+                  darkMode={darkMode}
                   role={msg.role}
                   content={msg.content}
+                  loading={msg.loading}
                 />
               ))}
               <div ref={messagesEndRef} />
