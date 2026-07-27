@@ -1,9 +1,10 @@
 "use client";
+import { useState, useEffect, useRef } from "react";
 import ChatMessage from "../components/ChatMessage";
 import ChatHeader from "../components/ChatHeader";
 import ChatWindow from "../components/ChatWindow";
 import ChatInput from "../components/ChatInput";
-import { useState, useEffect, useRef } from "react";
+import Sidebar from "../components/Sidebar";
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
@@ -123,48 +124,53 @@ async function sendMessage() {
 
   return (
     <main
-      className={`min-h-screen flex items-center justify-center ${
+      className={`min-h-screen flex ${
         darkMode
           ? "bg-gray-900 text-white"
           : "bg-gray-100 text-black"
         }`}
     >
-      <div className={`w-full max-w-2xl rounded-xl shadow-lg p-6 ${
-        darkMode
-          ? "bg-gray-800 text-white"
-          : "bg-white text-black"
-        }`}>
-        <ChatHeader
-          darkMode={darkMode}
-          setDarkMode={setDarkMode}
-        />
-        <ChatWindow
-          darkMode={darkMode}
-          ChatMessage={ChatMessage}
-          messages={messages}
-          setMessages={setMessages}
-          messagesEndRef={messagesEndRef}
-        />
-        <ChatInput
-          darkMode={darkMode}
-          message={message}
-          setMessage={setMessage}
-          sendMessage={sendMessage}
-        />
-        <button
-          onClick={sendMessage}
-          disabled={loading || !message.trim()}
-          className={`w-full rounded-lg p-3 text-white ${
-            loading
-              ? "bg-gray-500"
-              : "bg-blue-600 hover:bg-blue-700"
-            }
-          disabled:bg-gray-400
-          disabled:cursor-not-allowed
-          `}
+      <Sidebar />
+        <div
+          className={`flex-1 flex justify-center items-center`}
         >
-         {loading ? "考え中..." : "送信"}
-        </button>
+          <div className={`w-full max-w-2xl rounded-xl shadow-lg p-6 ${
+            darkMode
+            ? "bg-gray-800 text-white"
+            : "bg-white text-black"
+          }`}>
+          <ChatHeader
+            darkMode={darkMode}
+            setDarkMode={setDarkMode}
+          />
+          <ChatWindow
+            darkMode={darkMode}
+            ChatMessage={ChatMessage}
+            messages={messages}
+            setMessages={setMessages}
+            messagesEndRef={messagesEndRef}
+          />
+          <ChatInput
+            darkMode={darkMode}
+            message={message}
+            setMessage={setMessage}
+            sendMessage={sendMessage}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={loading || !message.trim()}
+            className={`w-full rounded-lg p-3 text-white ${
+              loading
+                ? "bg-gray-500"
+                : "bg-blue-600 hover:bg-blue-700"
+              }
+            disabled:bg-gray-400
+            disabled:cursor-not-allowed
+            `}
+          >
+          {loading ? "考え中..." : "送信"}
+          </button>
+        </div>
       </div>
     </main>
   );
