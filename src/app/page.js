@@ -10,12 +10,59 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const messagesEndRef = useRef(null);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: "こんにちは！何でも聞いてください😊",
-    }
+  const [chats, setChats] = useState([
+  {
+    id: 1,
+    title: "React",
+    messages: [],
+  },
+  {
+    id: 2,
+    title: "JavaScript",
+    messages: [],
+  },
+  {
+    id: 3,
+    title: "AI副業",
+    messages: [],
+  },
   ]);
+
+  const [currentChatId, setCurrentChatId] = useState(1);
+  const currentChat = chats.find(
+    (chat) => chat.id === currentChatId
+  );
+
+function createNewChat() {
+  const newChat = {
+    id: Date.now(),
+    title: "新しいチャット",
+    messages: [
+      {
+        role: "assistant",
+        content: "こんにちは！何でも聞いてください😊",
+      },
+    ],
+  };
+
+  setChats((prev) => [...prev, newChat]);
+  setCurrentChatId(newChat.id);
+}
+
+function deleteChat(chatId) {
+  const filteredChats = chats.filter(
+    (chat) => chat.id !== chatId
+  );
+
+  setChats(filteredChats);
+
+  if (
+    currentChatId === chatId &&
+    filteredChats.length > 0
+  ) {
+    setCurrentChatId(filteredChats[0].id);
+  }
+}
 
   // 起動時に読み込む
   useEffect(() => {
@@ -35,21 +82,21 @@ export default function Home() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [currentChat?.messages]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("messages");
+    const saved = localStorage.getItem("chats");
     if (saved) {
-      setMessages(JSON.parse(saved));
+      setChats(JSON.parse(saved));
     }
   }, []);
 
   useEffect(() => {
     localStorage.setItem(
-      "messages",
-      JSON.stringify(messages)
+      "chats",
+      JSON.stringify(chats)
     );
-  }, [messages]);
+  }, [chats]);
 
   const [loading, setLoading] = useState(false);
 
@@ -70,11 +117,26 @@ async function sendMessage() {
   };
 
   // ユーザーと「考えています...」を追加
-  setMessages((prev) => [
-    ...prev,
-    userMessage,
-    loadingMessage,
-  ]);
+  setChats((prevChats) =>
+  prevChats.map((chat) => {
+    if (chat.id !== currentChatId) return chat;
+
+    const isFirstUserMessage =
+      chat.messages.filter(msg => msg.role === "user").length === 0;
+
+    return {
+      ...chat,
+      title: isFirstUserMessage
+        ? currentMessage.slice(0, 20)
+        : chat.title,
+      messages: [
+        ...chat.messages,
+        userMessage,
+        loadingMessage,
+      ],
+    };
+  })
+);
 
   setMessage("");
   setLoading(true);
@@ -93,35 +155,46 @@ async function sendMessage() {
     const data = await res.json();
 
     // 最後の「考えています...」をAIの返答に置き換える
-    setMessages((prev) => {
-      const newMessages = [...prev];
+    setChats((prevChats) =>
+  prevChats.map((chat) => {
+    if (chat.id !== currentChatId) return chat;
 
-      newMessages[newMessages.length - 1] = {
-        role: "assistant",
-        content: data.reply,
-      };
+    const newMessages = [...chat.messages];
 
-      return newMessages;
-    });
+    newMessages[newMessages.length - 1] = {
+      role: "assistant",
+      content: data.reply,
+    };
 
+    return {
+      ...chat,
+      messages: newMessages,
+    };
+  })
+);
   } catch (error) {
     console.error(error);
 
-    setMessages((prev) => {
-      const newMessages = [...prev];
+    setChats((prevChats) =>
+  prevChats.map((chat) => {
+    if (chat.id !== currentChatId) return chat;
 
-      newMessages[newMessages.length - 1] = {
-        role: "assistant",
-        content: "エラーが発生しました。",
-      };
+    const newMessages = [...chat.messages];
 
-      return newMessages;
-    });
+    newMessages[newMessages.length - 1] = {
+      role: "assistant",
+      content: "エラーが発生しました。",
+    };
+
+    return {
+      ...chat,
+      messages: newMessages,
+    };
+  })
+);
   }
-
   setLoading(false);
 }
-
   return (
     <main
       className={`min-h-screen flex ${
@@ -130,7 +203,13 @@ async function sendMessage() {
           : "bg-gray-100 text-black"
         }`}
     >
-      <Sidebar />
+      <Sidebar
+         chats={chats}
+  currentChatId={currentChatId}
+  setCurrentChatId={setCurrentChatId}
+  createNewChat={createNewChat}
+  deleteChat={deleteChat}
+      />
         <div
           className={`flex-1 flex justify-center items-center`}
         >
@@ -146,8 +225,8 @@ async function sendMessage() {
           <ChatWindow
             darkMode={darkMode}
             ChatMessage={ChatMessage}
-            messages={messages}
-            setMessages={setMessages}
+            messages={currentChat?.messages || []}
+            setChats={setChats}
             messagesEndRef={messagesEndRef}
           />
           <ChatInput
