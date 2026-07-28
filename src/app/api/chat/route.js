@@ -1,23 +1,62 @@
-import { GoogleGenAI } from"@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY,
 });
+
 export async function POST(req) {
-    try {
-        const { message } = await req.json();
-        const response = await ai.models.generateContent({
-            model: "gemini-3.6-flash",
-            contents: message,
-        });
+  try {
+    const formData = await req.formData();
 
-        return Response.json({ reply: response.text });
-    } catch (error) {
-        console.error(error);
+    const message = formData.get("message");
+    const image = formData.get("image");
 
-        return Response.json(
-            { error: "AIとの通信に失敗しました" },
-            { status: 500 }
-        );
+    let response;
+
+    if (image) {
+      const bytes = await image.arrayBuffer();
+      const base64 = Buffer.from(bytes).toString("base64");
+
+      response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: message,
+              },
+              {
+                inlineData: {
+                  mimeType: image.type,
+                  data: base64,
+                },
+              },
+            ],
+          },
+        ],
+      });
+    } else {
+      response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents: message,
+      });
     }
+
+    return Response.json({
+      reply: response.text,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return Response.json(
+      {
+        error: "AIとの通信に失敗しました",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
 }

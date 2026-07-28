@@ -100,15 +100,24 @@ function deleteChat(chatId) {
 
   const [loading, setLoading] = useState(false);
 
-async function sendMessage() {
+async function sendMessage(image) {
   if (!message.trim()) return;
 
   const currentMessage = message;
-
+  
+  const formData = new FormData();
+    formData.append("message", currentMessage);
+      if (image) {
+        formData.append("image", image);
+      }
+      
   const userMessage = {
-    role: "user",
-    content: currentMessage,
-  };
+  role: "user",
+  content: currentMessage,
+  image: image
+    ? URL.createObjectURL(image)
+    : null,
+};
 
   const loadingMessage = {
     role: "assistant",
@@ -144,15 +153,10 @@ async function sendMessage() {
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message: currentMessage,
-      }),
+      body: formData,
     });
 
-    const data = await res.json();
+  const data = await res.json();
 
     // 最後の「考えています...」をAIの返答に置き換える
     setChats((prevChats) =>
@@ -205,10 +209,10 @@ async function sendMessage() {
     >
       <Sidebar
          chats={chats}
-  currentChatId={currentChatId}
-  setCurrentChatId={setCurrentChatId}
-  createNewChat={createNewChat}
-  deleteChat={deleteChat}
+         currentChatId={currentChatId}
+         setCurrentChatId={setCurrentChatId}
+         createNewChat={createNewChat}
+         deleteChat={deleteChat}
       />
         <div
           className={`flex-1 flex justify-center items-center`}
@@ -234,21 +238,8 @@ async function sendMessage() {
             message={message}
             setMessage={setMessage}
             sendMessage={sendMessage}
+            loading={loading}
           />
-          <button
-            onClick={sendMessage}
-            disabled={loading || !message.trim()}
-            className={`w-full rounded-lg p-3 text-white ${
-              loading
-                ? "bg-gray-500"
-                : "bg-blue-600 hover:bg-blue-700"
-              }
-            disabled:bg-gray-400
-            disabled:cursor-not-allowed
-            `}
-          >
-          {loading ? "考え中..." : "送信"}
-          </button>
         </div>
       </div>
     </main>

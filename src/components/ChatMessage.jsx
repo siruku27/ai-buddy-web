@@ -3,12 +3,14 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+// import TypingMessage from "./TypingMessage";
 
 export default function ChatMessage({
   darkMode,
   role,
   content,
   loading,
+  image,
 })
 {
   const isUser = role === "user";
@@ -61,42 +63,52 @@ export default function ChatMessage({
             <span></span>
           </div>
           ) : (
-          <ReactMarkdown
-  remarkPlugins={[remarkGfm]}
-  components={{
-    code({ inline, className, children, ...props }) {
-      const match = /language-(\w+)/.exec(className || "");
+  <>
+    {image && (
+      <img
+        src={image}
+        alt="uploaded"
+        className="rounded-lg mb-3 max-w-xs"
+      />
+    )}
 
-      return !inline && match ? (
-        <SyntaxHighlighter
-  style={oneDark}
-  language={match[1]}
-  PreTag="div"
-  wrapLongLines={true}
-  customStyle={{
-    borderRadius: "10px",
-    padding: "16px",
-    marginTop: "10px",
-    marginBottom: "10px",
-    fontSize: "14px",
-    overflowX: "auto",
-    maxWidth: "100%",
-  }}
-  {...props}
->
-          {String(children).replace(/\n$/, "")}
-        </SyntaxHighlighter>
-      ) : (
-        <code className={className} {...props}>
-          {children}
-        </code>
-      );
-    },
-  }}
->
-  {content}
-</ReactMarkdown>
-        )}
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code({ inline, className, children, ...props }) {
+          const match = /language-(\w+)/.exec(className || "");
+
+          return !inline && match ? (
+            <SyntaxHighlighter
+              style={oneDark}
+              language={match[1]}
+              PreTag="div"
+              wrapLongLines={true}
+              customStyle={{
+                borderRadius: "10px",
+                padding: "16px",
+                marginTop: "10px",
+                marginBottom: "10px",
+                fontSize: "14px",
+                overflowX: "auto",
+                maxWidth: "100%",
+              }}
+              {...props}
+            >
+              {String(children).replace(/\n$/, "")}
+            </SyntaxHighlighter>
+          ) : (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          );
+        },
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+    </>
+          )}
       </div>
     </div>
   );

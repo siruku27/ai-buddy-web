@@ -19,6 +19,7 @@ export default function ChatWindow({
           role={msg.role}
           content={msg.content}
           loading={msg.loading}
+          image={msg.image}
         />
       ))}
 
