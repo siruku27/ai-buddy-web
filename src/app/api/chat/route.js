@@ -11,20 +11,21 @@ export async function POST(req) {
     const message = formData.get("message");
     const image = formData.get("image");
 
-    let response;
+    let stream;
 
     if (image) {
+      // ===== 画像あり =====
       const bytes = await image.arrayBuffer();
       const base64 = Buffer.from(bytes).toString("base64");
 
-      response = await ai.models.generateContent({
+      stream = await ai.models.generateContentStream({
         model: "gemini-3.6-flash",
         contents: [
           {
             role: "user",
             parts: [
               {
-                text: message,
+                text: message || "",
               },
               {
                 inlineData: {
@@ -37,14 +38,37 @@ export async function POST(req) {
         ],
       });
     } else {
-      response = await ai.models.generateContent({
+      // ===== テキストのみ =====
+      stream = await ai.models.generateContentStream({
         model: "gemini-3.6-flash",
         contents: message,
       });
     }
 
-    return Response.json({
-      reply: response.text,
+    const encoder = new TextEncoder();
+
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            controller.enqueue(
+              encoder.encode(chunk.text ?? "")
+            );
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(readableStream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     });
 
   } catch (error) {

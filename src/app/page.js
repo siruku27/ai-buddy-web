@@ -101,102 +101,127 @@ function deleteChat(chatId) {
   const [loading, setLoading] = useState(false);
 
 async function sendMessage(image) {
-  if (!message.trim()) return;
+  const chatId = currentChatId;
+  if (!message.trim() && !image) return;
 
   const currentMessage = message;
-  
-  const formData = new FormData();
-    formData.append("message", currentMessage);
-      if (image) {
-        formData.append("image", image);
-      }
-      
+
+  // 画像プレビュー用
+  const imageUrl = image ? URL.createObjectURL(image) : null;
+
   const userMessage = {
-  role: "user",
-  content: currentMessage,
-  image: image
-    ? URL.createObjectURL(image)
-    : null,
-};
+    role: "user",
+    content: currentMessage,
+    image: imageUrl,
+  };
 
   const loadingMessage = {
     role: "assistant",
-    content: "考えています...",
+    content: "",
     loading: true,
   };
 
-  // ユーザーと「考えています...」を追加
+  // 先に画面へ追加
   setChats((prevChats) =>
-  prevChats.map((chat) => {
-    if (chat.id !== currentChatId) return chat;
+    prevChats.map((chat) => {
+      if (chat.id !== chatId) return chat;
 
-    const isFirstUserMessage =
-      chat.messages.filter(msg => msg.role === "user").length === 0;
+      const isFirstUserMessage =
+        chat.messages.filter((msg) => msg.role === "user").length === 0;
 
-    return {
-      ...chat,
-      title: isFirstUserMessage
-        ? currentMessage.slice(0, 20)
-        : chat.title,
-      messages: [
-        ...chat.messages,
-        userMessage,
-        loadingMessage,
-      ],
-    };
-  })
-);
+      return {
+        ...chat,
+        title: isFirstUserMessage
+          ? (currentMessage || "画像").slice(0, 20)
+          : chat.title,
+        messages: [
+          ...chat.messages,
+          userMessage,
+          loadingMessage,
+        ],
+      };
+    })
+  );
 
   setMessage("");
   setLoading(true);
 
   try {
+    const formData = new FormData();
+
+    formData.append("message", currentMessage);
+
+    if (image) {
+      formData.append("image", image);
+    }
+
     const res = await fetch("/api/chat", {
       method: "POST",
       body: formData,
     });
 
-  const data = await res.json();
+    if (!res.body) {
+      throw new Error("レスポンスがありません");
+    }
 
-    // 最後の「考えています...」をAIの返答に置き換える
-    setChats((prevChats) =>
-  prevChats.map((chat) => {
-    if (chat.id !== currentChatId) return chat;
+    const reader = res.body.getReader();
 
-    const newMessages = [...chat.messages];
+    let aiReply = "";
+    const decoder = new TextDecoder("utf-8");
 
-    newMessages[newMessages.length - 1] = {
-      role: "assistant",
-      content: data.reply,
-    };
+    while (true) {
+      const { done, value } = await reader.read();
 
-    return {
-      ...chat,
-      messages: newMessages,
-    };
-  })
-);
+      if (done) break;
+
+      const chunk = decoder.decode(value, {
+        stream: true,
+      });
+
+      aiReply += chunk;
+
+      setChats((prevChats) =>
+        prevChats.map((chat) => {
+          if (chat.id !== chatId) return chat;
+
+          const newMessages = [...chat.messages];
+
+          newMessages[newMessages.length - 1] = {
+            role: "assistant",
+            content: aiReply,
+            loading: false,
+          };
+
+          return {
+            ...chat,
+            messages: newMessages,
+          };
+        })
+      );
+    }
   } catch (error) {
     console.error(error);
 
     setChats((prevChats) =>
-  prevChats.map((chat) => {
-    if (chat.id !== currentChatId) return chat;
+      prevChats.map((chat) => {
+        if (chat.id !== chatId) return chat;
 
-    const newMessages = [...chat.messages];
+        const newMessages = [...chat.messages];
 
-    newMessages[newMessages.length - 1] = {
-      role: "assistant",
-      content: "エラーが発生しました。",
-    };
+        newMessages[newMessages.length - 1] = {
+          role: "assistant",
+          content: "エラーが発生しました。",
+          loading: false,
+        };
 
-    return {
-      ...chat,
-      messages: newMessages,
-    };
-  })
-);
+        return {
+          ...chat,
+          messages: newMessages,
+        };
+      })
+    );
   }
+
   setLoading(false);
 }
   return (
