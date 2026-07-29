@@ -148,13 +148,17 @@ async function sendMessage(image) {
 
   try {
     const formData = new FormData();
-
     formData.append("message", currentMessage);
 
-    if (image) {
-      formData.append("image", image);
-    }
-
+    // 最新20件だけ送る
+    const recentHistory = currentChat.messages.slice(-20);
+    formData.append(
+      "history",
+      JSON.stringify(recentHistory)
+    );
+  if (image) {
+   formData.append("image", image);
+  }
     const res = await fetch("/api/chat", {
       method: "POST",
       body: formData,

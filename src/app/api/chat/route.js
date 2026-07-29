@@ -8,43 +8,54 @@ export async function POST(req) {
   try {
     const formData = await req.formData();
 
-    const message = formData.get("message");
+    const message = formData.get("message") || "";
+    const history = JSON.parse(
+      formData.get("history") || "[]"
+    );
     const image = formData.get("image");
 
-    let stream;
+    // ===== 会話履歴 =====
+    const contents = history.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [
+        {
+          text: msg.content || "",
+        },
+      ],
+    }));
 
+    // ===== 最新メッセージ =====
+    const userParts = [
+      {
+        text: message,
+      },
+    ];
+
+    // ===== 画像がある場合だけ追加 =====
     if (image) {
-      // ===== 画像あり =====
       const bytes = await image.arrayBuffer();
       const base64 = Buffer.from(bytes).toString("base64");
 
-      stream = await ai.models.generateContentStream({
-        model: "gemini-3.6-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: message || "",
-              },
-              {
-                inlineData: {
-                  mimeType: image.type,
-                  data: base64,
-                },
-              },
-            ],
-          },
-        ],
-      });
-    } else {
-      // ===== テキストのみ =====
-      stream = await ai.models.generateContentStream({
-        model: "gemini-3.6-flash",
-        contents: message,
+      userParts.push({
+        inlineData: {
+          mimeType: image.type,
+          data: base64,
+        },
       });
     }
 
+    contents.push({
+      role: "user",
+      parts: userParts,
+    });
+
+    // ===== Geminiへ送信 =====
+    const stream = await ai.models.generateContentStream({
+      model: "gemini-3.6-flash",
+      contents,
+    });
+
+    // ===== ストリーミング返信 =====
     const encoder = new TextEncoder();
 
     const readableStream = new ReadableStream({
@@ -67,7 +78,6 @@ export async function POST(req) {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
       },
     });
 
