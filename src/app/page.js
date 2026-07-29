@@ -5,229 +5,47 @@ import ChatHeader from "../components/ChatHeader";
 import ChatWindow from "../components/ChatWindow";
 import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
+import useChat from "../hooks/useChat";
+import useLocalStorage from "../hooks/useLocalStorage";
+import useTheme from "../hooks/useTheme";
+import useAutoScroll from "../hooks/useAutoScroll";
+import {
+  createFormData,
+  appendUserMessage,
+  updateAIMessage,
+  showError,
+} from "../utils/chatHelpers";
 
 export default function Home() {
-  const [darkMode, setDarkMode] = useState(false);
   const messagesEndRef = useRef(null);
   const [message, setMessage] = useState("");
-  const [chats, setChats] = useState([
-  {
-    id: 1,
-    title: "React",
-    messages: [],
-  },
-  {
-    id: 2,
-    title: "JavaScript",
-    messages: [],
-  },
-  {
-    id: 3,
-    title: "AI副業",
-    messages: [],
-  },
-  ]);
+  const {darkMode, setDarkMode,} = useTheme();
+  const {
+    chats,
+    setChats,
+    currentChat,
+    currentChatId,
+    setCurrentChatId,
 
-  const [currentChatId, setCurrentChatId] = useState(1);
-  const currentChat = chats.find(
-    (chat) => chat.id === currentChatId
+    loading,
+    setLoading,
+
+    createNewChat,
+    deleteChat,
+    sendMessage,
+  } = useChat(message, setMessage);
+
+  useLocalStorage(
+    "chats",
+    chats,
+    setChats
   );
 
-function createNewChat() {
-  const newChat = {
-    id: Date.now(),
-    title: "新しいチャット",
-    messages: [
-      {
-        role: "assistant",
-        content: "こんにちは！何でも聞いてください😊",
-      },
-    ],
-  };
-
-  setChats((prev) => [...prev, newChat]);
-  setCurrentChatId(newChat.id);
-}
-
-function deleteChat(chatId) {
-  const filteredChats = chats.filter(
-    (chat) => chat.id !== chatId
+  useAutoScroll(
+    messagesEndRef,
+    currentChat?.messages
   );
 
-  setChats(filteredChats);
-
-  if (
-    currentChatId === chatId &&
-    filteredChats.length > 0
-  ) {
-    setCurrentChatId(filteredChats[0].id);
-  }
-}
-
-  // 起動時に読み込む
-  useEffect(() => {
-  const savedTheme = localStorage.getItem("theme");
-  if (savedTheme === "dark") {
-    setDarkMode(true);
-    }
-  }, []);
-
-// テーマ変更時に保存
-  useEffect(() => {
-   localStorage.setItem(
-    "theme",
-    darkMode ? "dark" : "light"
-    );
-  }, [darkMode]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [currentChat?.messages]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("chats");
-    if (saved) {
-      setChats(JSON.parse(saved));
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "chats",
-      JSON.stringify(chats)
-    );
-  }, [chats]);
-
-  const [loading, setLoading] = useState(false);
-
-async function sendMessage(image) {
-  const chatId = currentChatId;
-  if (!message.trim() && !image) return;
-
-  const currentMessage = message;
-
-  // 画像プレビュー用
-  const imageUrl = image ? URL.createObjectURL(image) : null;
-
-  const userMessage = {
-    role: "user",
-    content: currentMessage,
-    image: imageUrl,
-  };
-
-  const loadingMessage = {
-    role: "assistant",
-    content: "",
-    loading: true,
-  };
-
-  // 先に画面へ追加
-  setChats((prevChats) =>
-    prevChats.map((chat) => {
-      if (chat.id !== chatId) return chat;
-
-      const isFirstUserMessage =
-        chat.messages.filter((msg) => msg.role === "user").length === 0;
-
-      return {
-        ...chat,
-        title: isFirstUserMessage
-          ? (currentMessage || "画像").slice(0, 20)
-          : chat.title,
-        messages: [
-          ...chat.messages,
-          userMessage,
-          loadingMessage,
-        ],
-      };
-    })
-  );
-
-  setMessage("");
-  setLoading(true);
-
-  try {
-    const formData = new FormData();
-    formData.append("message", currentMessage);
-
-    // 最新20件だけ送る
-    const recentHistory = currentChat.messages.slice(-20);
-    formData.append(
-      "history",
-      JSON.stringify(recentHistory)
-    );
-  if (image) {
-   formData.append("image", image);
-  }
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.body) {
-      throw new Error("レスポンスがありません");
-    }
-
-    const reader = res.body.getReader();
-
-    let aiReply = "";
-    const decoder = new TextDecoder("utf-8");
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) break;
-
-      const chunk = decoder.decode(value, {
-        stream: true,
-      });
-
-      aiReply += chunk;
-
-      setChats((prevChats) =>
-        prevChats.map((chat) => {
-          if (chat.id !== chatId) return chat;
-
-          const newMessages = [...chat.messages];
-
-          newMessages[newMessages.length - 1] = {
-            role: "assistant",
-            content: aiReply,
-            loading: false,
-          };
-
-          return {
-            ...chat,
-            messages: newMessages,
-          };
-        })
-      );
-    }
-  } catch (error) {
-    console.error(error);
-
-    setChats((prevChats) =>
-      prevChats.map((chat) => {
-        if (chat.id !== chatId) return chat;
-
-        const newMessages = [...chat.messages];
-
-        newMessages[newMessages.length - 1] = {
-          role: "assistant",
-          content: "エラーが発生しました。",
-          loading: false,
-        };
-
-        return {
-          ...chat,
-          messages: newMessages,
-        };
-      })
-    );
-  }
-
-  setLoading(false);
-}
   return (
     <main
       className={`min-h-screen flex ${
