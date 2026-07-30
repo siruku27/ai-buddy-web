@@ -1,7 +1,8 @@
 export function createFormData(
   message,
   history,
-  image
+  image,
+  memories
 ) {
   const formData = new FormData();
 
@@ -10,6 +11,11 @@ export function createFormData(
   formData.append(
     "history",
     JSON.stringify(history)
+  );
+
+  formData.append(
+    "memories",
+    JSON.stringify(memories)
   );
 
   if (image) {

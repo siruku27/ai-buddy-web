@@ -1,6 +1,7 @@
 export default async function useStream(
   formData,
-  onChunk
+  onChunk,
+  onMemory
 ) {
   const res = await fetch("/api/chat", {
     method: "POST",
@@ -26,11 +27,39 @@ export default async function useStream(
 
     if (done) break;
 
-    aiReply += decoder.decode(value, {
+    const text = decoder.decode(value, {
       stream: true,
     });
 
-    onChunk(aiReply);
+    if (text.includes("__MEMORY__")) {
+      const parts =
+        text.split("__MEMORY__");
+
+      aiReply += parts[0];
+
+      onChunk(aiReply);
+
+      if (parts[1]) {
+        try {
+          const memory = JSON.parse(parts[1]);
+
+          onMemory?.(memory);
+
+        } catch (err) {
+          console.error(
+            "Memory Parse Error",
+            err
+          );
+        }
+      }
+
+    } else {
+
+      aiReply += text;
+
+      onChunk(aiReply);
+
+    }
   }
 
   return aiReply;

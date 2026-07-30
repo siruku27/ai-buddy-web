@@ -1,6 +1,10 @@
 import { useState } from "react";
 import useStream from "./useStream";
 import {
+  saveMemory,
+  getMemories,
+} from "../services/memoryStore";
+import {
   createFormData,
   appendUserMessage,
   updateAIMessage,
@@ -77,10 +81,13 @@ export default function useChat(message, setMessage) {
     const history =
       currentChat?.messages.slice(-20) || [];
 
+    const memories = getMemories();
+
     const formData = createFormData(
       currentMessage,
       history,
-      image
+      image,
+      memories
     );
 
     setChats((prev) =>
@@ -98,6 +105,7 @@ export default function useChat(message, setMessage) {
     try {
       await useStream(
   formData,
+
   (aiReply) => {
     setChats((prev) =>
       updateAIMessage(
@@ -105,6 +113,17 @@ export default function useChat(message, setMessage) {
         chatId,
         aiReply
       )
+    );
+  },
+
+  (memory) => {
+    if (!memory.save) return;
+
+    saveMemory(memory.memory);
+
+    console.log(
+      "Memory Saved:",
+      memory.memory
     );
   }
 );
