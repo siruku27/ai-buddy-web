@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef } from "react";
+import ImagePreview from "./ImagePreview";
+import ImageButton from "./ImageButton";
+import SendButton from "./SendButton";
+import useChatInput from "../hooks/useChatInput";
 
 export default function ChatInput({
   darkMode,
@@ -8,34 +12,34 @@ export default function ChatInput({
   setMessage,
   sendMessage,
   loading,
+  image,
+  selectImage,
+  removeImage,
 }) {
-  const [image, setImage] = useState(null);
-  const fileInputRef = useRef(null);
+
+  const {
+    fileInputRef,
+    clearImage,
+    handleSend,
+    handleKeyDown,
+  } = useChatInput({
+    image,
+    removeImage,
+    sendMessage,
+  });
 
   return (
     <>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={(e) => setImage(e.target.files[0])}
-        className="mb-2"
+      <ImageButton
+        fileInputRef={fileInputRef}
+        selectImage={selectImage}
       />
-
-      {image && (
-  <div className="mb-2">
-    <img
-      src={URL.createObjectURL(image)}
-      alt="preview"
-      className="w-40 rounded-lg"
-    />
-
-    <p className="text-sm mt-1">
-      📎 {image.name}
-    </p>
-  </div>
-)}
-
+      <ImagePreview
+        image={image}
+        removeImage={() => {
+        clearImage();
+        }}
+      />
       <textarea
         className={`w-full rounded-lg p-3 resize-none border ${
           darkMode
@@ -45,35 +49,17 @@ export default function ChatInput({
         rows={3}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage(image);
-            setImage(null);
-            if (fileInputRef.current) {
-               fileInputRef.current.value = "";
-}
-          }
-        }}
+        onKeyDown={handleKeyDown}
         placeholder="メッセージを入力... (Enterで送信、Shift + Enterで改行)"
       />
-      <button
-            onClick={() => {
-              sendMessage(image);
-              setImage(null);
-          }}
-            disabled={loading || !message.trim()}
-            className={`w-full rounded-lg p-3 text-white ${
-              loading
-                ? "bg-gray-500"
-                : "bg-blue-600 hover:bg-blue-700"
-              }
-            disabled:bg-gray-400
-            disabled:cursor-not-allowed
-            `}
-          >
-          {loading ? "考え中..." : "送信"}
-          </button>
+      <SendButton
+        loading={loading}
+        disabled={
+          loading ||
+          (!message.trim() && !image)
+        }
+        onSend={handleSend}
+      />
     </>
   );
 }

@@ -9,6 +9,7 @@ import useChat from "../hooks/useChat";
 import useLocalStorage from "../hooks/useLocalStorage";
 import useTheme from "../hooks/useTheme";
 import useAutoScroll from "../hooks/useAutoScroll";
+import useImageUpload from "../hooks/useImageUpload";
 import {
   createFormData,
   appendUserMessage,
@@ -20,6 +21,11 @@ export default function Home() {
   const messagesEndRef = useRef(null);
   const [message, setMessage] = useState("");
   const {darkMode, setDarkMode,} = useTheme();
+  const {
+    image,
+    selectImage,
+    removeImage,
+  } = useImageUpload();
   const {
     chats,
     setChats,
@@ -86,6 +92,9 @@ export default function Home() {
             setMessage={setMessage}
             sendMessage={sendMessage}
             loading={loading}
+            image={image}
+            selectImage={selectImage}
+            removeImage={removeImage}
           />
         </div>
       </div>
