@@ -1,16 +1,11 @@
 import { useState, useEffect } from "react";
 
 export default function useTheme() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === "undefined") return false;
 
-  // 起動時にテーマを読み込む
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-
-    if (savedTheme === "dark") {
-      setDarkMode(true);
-    }
-  }, []);
+    return localStorage.getItem("theme") === "dark";
+  });
 
   // テーマ変更時に保存
   useEffect(() => {

@@ -1,13 +1,28 @@
+"use client";
+
+import { useEffect, useMemo } from "react";
+
 export default function ImagePreview({
   image,
   removeImage,
 }) {
-  if (!image) return null;
+  const previewUrl = useMemo(
+    () => (image ? URL.createObjectURL(image) : null),
+    [image]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  if (!image || !previewUrl) return null;
 
   return (
     <div className="mb-3 relative inline-block">
       <img
-        src={URL.createObjectURL(image)}
+        src={previewUrl}
         alt="preview"
         className="w-40 rounded-lg border"
       />

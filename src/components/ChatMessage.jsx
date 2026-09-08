@@ -3,7 +3,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-// import TypingMessage from "./TypingMessage";
 
 export default function ChatMessage({
   darkMode,
@@ -75,10 +74,10 @@ export default function ChatMessage({
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
-        code({ inline, className, children, ...props }) {
+        code({ className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || "");
 
-          return !inline && match ? (
+          return match ? (
             <SyntaxHighlighter
               style={oneDark}
               language={match[1]}

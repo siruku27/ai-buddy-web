@@ -5,21 +5,18 @@ import ChatHeader from "../components/ChatHeader";
 import ChatWindow from "../components/ChatWindow";
 import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
+import MemoryPanel from "../components/MemoryPanel";
 import useChat from "../hooks/useChat";
 import useLocalStorage from "../hooks/useLocalStorage";
 import useTheme from "../hooks/useTheme";
 import useAutoScroll from "../hooks/useAutoScroll";
 import useImageUpload from "../hooks/useImageUpload";
-import {
-  createFormData,
-  appendUserMessage,
-  updateAIMessage,
-  showError,
-} from "../utils/chatHelpers";
+import { exportChatAsMarkdown } from "../utils/exportChat";
 
 export default function Home() {
   const messagesEndRef = useRef(null);
   const [message, setMessage] = useState("");
+  const [showMemoryPanel, setShowMemoryPanel] = useState(false);
   const {darkMode, setDarkMode,} = useTheme();
   const {
     image,
@@ -39,6 +36,7 @@ export default function Home() {
     createNewChat,
     deleteChat,
     sendMessage,
+    stopGenerating,
   } = useChat(message, setMessage);
 
   useLocalStorage(
@@ -78,6 +76,8 @@ export default function Home() {
           <ChatHeader
             darkMode={darkMode}
             setDarkMode={setDarkMode}
+            onExport={() => exportChatAsMarkdown(currentChat)}
+            onOpenMemory={() => setShowMemoryPanel(true)}
           />
           <ChatWindow
             darkMode={darkMode}
@@ -91,6 +91,7 @@ export default function Home() {
             message={message}
             setMessage={setMessage}
             sendMessage={sendMessage}
+            stopGenerating={stopGenerating}
             loading={loading}
             image={image}
             selectImage={selectImage}
@@ -98,6 +99,13 @@ export default function Home() {
           />
         </div>
       </div>
+
+      {showMemoryPanel && (
+        <MemoryPanel
+          darkMode={darkMode}
+          onClose={() => setShowMemoryPanel(false)}
+        />
+      )}
     </main>
   );
 }

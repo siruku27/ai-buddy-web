@@ -83,7 +83,8 @@ export function updateAIMessage(
 }
 export function showError(
   prevChats,
-  chatId
+  chatId,
+  message = "エラーが発生しました。"
 ) {
   return prevChats.map((chat) => {
     if (chat.id !== chatId) return chat;
@@ -92,7 +93,7 @@ export function showError(
 
     messages[messages.length - 1] = {
       role: "assistant",
-      content: "エラーが発生しました。",
+      content: message,
       loading: false,
     };
 

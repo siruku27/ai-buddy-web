@@ -31,3 +31,16 @@ export function getMemories() {
 export function clearMemories() {
   localStorage.removeItem("memories");
 }
+
+export function removeMemory(id) {
+  if (typeof window === "undefined") return;
+
+  const memories = getMemories().filter(
+    (memory) => memory.id !== id
+  );
+
+  localStorage.setItem(
+    "memories",
+    JSON.stringify(memories)
+  );
+}

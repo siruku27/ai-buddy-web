@@ -1,15 +1,37 @@
-import { GoogleGenAI } from "@google/genai";
+import { ai, CHAT_MODEL } from "../../../services/geminiClient";
 import { checkMemory } from "../../../services/memoryService";
+import { isRateLimited, getClientIp } from "../../../utils/rateLimit";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function POST(req) {
   try {
+    const ip = getClientIp(req);
+
+    if (isRateLimited(ip)) {
+      return Response.json(
+        {
+          error:
+            "リクエストが多すぎます。しばらく待ってから再度お試しください。",
+        },
+        { status: 429 }
+      );
+    }
+
     const formData = await req.formData();
 
-    const message = formData.get("message") || "";
+    const message = (formData.get("message") || "").toString();
+
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      return Response.json(
+        {
+          error: `メッセージは${MAX_MESSAGE_LENGTH}文字以内で入力してください。`,
+        },
+        { status: 400 }
+      );
+    }
+
     const history = JSON.parse(
       formData.get("history") || "[]"
     );
@@ -18,12 +40,28 @@ export async function POST(req) {
     );
     const image = formData.get("image");
 
+    if (image && typeof image === "object" && image.size > 0) {
+      if (!image.type?.startsWith("image/")) {
+        return Response.json(
+          { error: "画像ファイルのみアップロードできます。" },
+          { status: 400 }
+        );
+      }
+
+      if (image.size > MAX_IMAGE_SIZE) {
+        return Response.json(
+          { error: "画像サイズは5MB以内にしてください。" },
+          { status: 400 }
+        );
+      }
+    }
+
     const memoryPrompt =
           `
           あなたが覚えているユーザー情報
 
           ${memories
-          .map((m) => "- " + m)
+          .map((m) => "- " + m.content)
           .join("\n")}
 
           必要な時だけ自然に利用してください。
@@ -49,11 +87,11 @@ export async function POST(req) {
       ],
     });
 
-    const memoryPromise = checkMemory({
-      message,
-      history,
-      image: !!image,
-    });
+    // 空メッセージ(画像のみの送信)では記憶抽出の意味がないため呼び出しをスキップし、
+    // API呼び出し回数とコストを抑える。
+    const memoryPromise = message.trim()
+      ? checkMemory({ message, history, image: !!image })
+      : Promise.resolve({ save: false });
     // ===== 最新メッセージ =====
     const userParts = [
       {
@@ -62,7 +100,7 @@ export async function POST(req) {
     ];
 
     // ===== 画像がある場合だけ追加 =====
-    if (image) {
+    if (image && typeof image === "object" && image.size > 0) {
       const bytes = await image.arrayBuffer();
       const base64 = Buffer.from(bytes).toString("base64");
 
@@ -81,7 +119,7 @@ export async function POST(req) {
 
     // ===== Geminiへ送信 =====
     const stream = await ai.models.generateContentStream({
-      model: "gemini-3.6-flash",
+      model: CHAT_MODEL,
       contents,
     });
 

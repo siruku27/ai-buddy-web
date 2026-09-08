@@ -1,5 +1,5 @@
-import { useState } from "react";
-import useStream from "./useStream";
+import { useRef, useState } from "react";
+import streamChat from "./streamChat";
 import {
   saveMemory,
   getMemories,
@@ -32,6 +32,7 @@ export default function useChat(message, setMessage) {
 
   const [currentChatId, setCurrentChatId] = useState(1);
   const [loading, setLoading] = useState(false);
+  const abortControllerRef = useRef(null);
 
   const currentChat = chats.find(
     (chat) => chat.id === currentChatId
@@ -54,6 +55,14 @@ export default function useChat(message, setMessage) {
   }
 
   function deleteChat(chatId) {
+    const chatToDelete = chats.find(
+      (chat) => chat.id === chatId
+    );
+
+    chatToDelete?.messages.forEach((msg) => {
+      if (msg.image) URL.revokeObjectURL(msg.image);
+    });
+
     const filtered = chats.filter(
       (chat) => chat.id !== chatId
     );
@@ -66,6 +75,10 @@ export default function useChat(message, setMessage) {
     ) {
       setCurrentChatId(filtered[0].id);
     }
+  }
+
+  function stopGenerating() {
+    abortControllerRef.current?.abort();
   }
 
   async function sendMessage(image) {
@@ -102,39 +115,51 @@ export default function useChat(message, setMessage) {
     setMessage("");
     setLoading(true);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
-      await useStream(
-  formData,
+      await streamChat(
+        formData,
 
-  (aiReply) => {
-    setChats((prev) =>
-      updateAIMessage(
-        prev,
-        chatId,
-        aiReply
-      )
-    );
-  },
+        (aiReply) => {
+          setChats((prev) =>
+            updateAIMessage(
+              prev,
+              chatId,
+              aiReply
+            )
+          );
+        },
 
-  (memory) => {
-    if (!memory.save) return;
+        (memory) => {
+          if (!memory.save) return;
 
-    saveMemory(memory.memory);
+          saveMemory(memory.memory);
 
-    console.log(
-      "Memory Saved:",
-      memory.memory
-    );
-  }
-);
-    } catch (err) {
-      console.error(err);
+          console.log(
+            "Memory Saved:",
+            memory.memory
+          );
+        },
 
-      setChats((prev) =>
-        showError(prev, chatId)
+        controller.signal
       );
+    } catch (err) {
+      if (err.name === "AbortError") {
+        setChats((prev) =>
+          showError(prev, chatId, "送信を中止しました。")
+        );
+      } else {
+        console.error(err);
+
+        setChats((prev) =>
+          showError(prev, chatId, err.message)
+        );
+      }
     } finally {
       setLoading(false);
+      abortControllerRef.current = null;
     }
   }
 
@@ -149,5 +174,6 @@ export default function useChat(message, setMessage) {
     createNewChat,
     deleteChat,
     sendMessage,
+    stopGenerating,
   };
 }

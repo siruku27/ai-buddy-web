@@ -1,8 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+import { ai, CHAT_MODEL } from "./geminiClient";
 
 const MEMORY_PROMPT = `
 あなたはAIの長期メモリ管理システムです。
@@ -51,7 +47,7 @@ export async function checkMemory({
   image,
 }) {
   const response = await ai.models.generateContent({
-    model: "gemini-3.6-flash",
+    model: CHAT_MODEL,
     contents: `
 ${MEMORY_PROMPT}
 

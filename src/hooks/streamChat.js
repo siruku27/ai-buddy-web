@@ -1,15 +1,29 @@
-export default async function useStream(
+export default async function streamChat(
   formData,
   onChunk,
-  onMemory
+  onMemory,
+  signal
 ) {
   const res = await fetch("/api/chat", {
     method: "POST",
     body: formData,
+    signal,
   });
 
   if (!res.ok) {
-    throw new Error("API Error");
+    let message = "AIとの通信に失敗しました。";
+
+    try {
+      const data = await res.json();
+
+      if (data?.error) {
+        message = data.error;
+      }
+    } catch {
+      // レスポンスがJSONでない場合はデフォルトメッセージを使う
+    }
+
+    throw new Error(message);
   }
 
   if (!res.body) {

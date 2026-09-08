@@ -11,6 +11,7 @@ export default function ChatInput({
   message,
   setMessage,
   sendMessage,
+  stopGenerating,
   loading,
   image,
   selectImage,
@@ -59,6 +60,7 @@ export default function ChatInput({
           (!message.trim() && !image)
         }
         onSend={handleSend}
+        onStop={stopGenerating}
       />
     </>
   );

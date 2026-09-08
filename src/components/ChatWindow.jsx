@@ -6,7 +6,7 @@ export default function ChatWindow({
 }) {
   return (
     <div
-      className={`border rounded-lg p-4 h-80 overflow-y-auto mb-4 ${
+      className={`border rounded-lg p-4 h-[60vh] min-h-[320px] overflow-y-auto mb-4 ${
         darkMode
           ? "bg-gray-800 border-gray-700"
           : "bg-white border-gray-300"
