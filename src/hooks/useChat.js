@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import streamChat from "./streamChat";
+import useLocalStorage from "./useLocalStorage";
 import {
   saveMemory,
   getMemories,
@@ -12,33 +13,21 @@ import {
 } from "../utils/chatHelpers";
 
 export default function useChat(message, setMessage) {
-  const [chats, setChats] = useState([
-    {
-      id: 1,
-      title: "React",
-      messages: [],
-    },
-    {
-      id: 2,
-      title: "JavaScript",
-      messages: [],
-    },
-    {
-      id: 3,
-      title: "AI副業",
-      messages: [],
-    },
-  ]);
+  const [chats, setChats] = useState([]);
 
-  const [currentChatId, setCurrentChatId] = useState(1);
+  const [selectedChatId, setCurrentChatId] = useState(1);
   const [loading, setLoading] = useState(false);
   const abortControllerRef = useRef(null);
+  const isLoaded = useLocalStorage("chats", chats, setChats);
 
   const currentChat = chats.find(
-    (chat) => chat.id === currentChatId
-  );
+    (chat) => chat.id === selectedChatId
+  ) || chats[0];
+  const currentChatId = currentChat?.id ?? null;
+  const canSend = isLoaded && !!currentChat;
 
   function createNewChat() {
+    if (!isLoaded) return;
     const newChat = {
       id: Date.now(),
       title: "新しいチャット",
@@ -55,6 +44,7 @@ export default function useChat(message, setMessage) {
   }
 
   function deleteChat(chatId) {
+    if (!isLoaded) return;
     const chatToDelete = chats.find(
       (chat) => chat.id === chatId
     );
@@ -69,11 +59,8 @@ export default function useChat(message, setMessage) {
 
     setChats(filtered);
 
-    if (
-      currentChatId === chatId &&
-      filtered.length > 0
-    ) {
-      setCurrentChatId(filtered[0].id);
+    if (currentChatId === chatId) {
+      setCurrentChatId(filtered[0]?.id ?? null);
     }
   }
 
@@ -81,58 +68,58 @@ export default function useChat(message, setMessage) {
     abortControllerRef.current?.abort();
   }
 
-  async function sendMessage(image) {
+  async function sendMessage(image, onAccepted) {
+    if (!canSend || abortControllerRef.current) return;
     if (!message.trim() && !image) return;
 
     const chatId = currentChatId;
     const currentMessage = message;
-
-    const imageUrl = image
-      ? URL.createObjectURL(image)
-      : null;
-
-    const history =
-      currentChat?.messages.slice(-20) || [];
-
-    const memories = getMemories();
-
-    const formData = createFormData(
-      currentMessage,
-      history,
-      image,
-      memories
-    );
-
-    setChats((prev) =>
-      appendUserMessage(
-        prev,
-        chatId,
-        currentMessage,
-        imageUrl
-      )
-    );
-
-    setMessage("");
-    setLoading(true);
-
+    const assistantMessageId = crypto.randomUUID();
     const controller = new AbortController();
+    // stateの再描画を待たずに、同じイベント内の連続送信も防ぐ。
     abortControllerRef.current = controller;
 
     try {
+      const history = currentChat.messages.slice(-20);
+      const memories = getMemories();
+      const formData = createFormData(
+        currentMessage,
+        history,
+        image,
+        memories
+      );
+      const imageUrl = image ? URL.createObjectURL(image) : null;
+
+      setChats((prev) =>
+        appendUserMessage(
+          prev,
+          chatId,
+          currentMessage,
+          imageUrl,
+          assistantMessageId
+        )
+      );
+      setMessage("");
+      setLoading(true);
+      onAccepted?.();
+
       await streamChat(
         formData,
 
         (aiReply) => {
+          if (abortControllerRef.current !== controller || controller.signal.aborted) return;
           setChats((prev) =>
             updateAIMessage(
               prev,
               chatId,
+              assistantMessageId,
               aiReply
             )
           );
         },
 
         (memory) => {
+          if (abortControllerRef.current !== controller || controller.signal.aborted) return;
           if (!memory.save) return;
 
           saveMemory(memory.memory);
@@ -146,20 +133,23 @@ export default function useChat(message, setMessage) {
         controller.signal
       );
     } catch (err) {
+      if (abortControllerRef.current !== controller) return;
       if (err.name === "AbortError") {
         setChats((prev) =>
-          showError(prev, chatId, "送信を中止しました。")
+          showError(prev, chatId, assistantMessageId, "送信を中止しました。")
         );
       } else {
         console.error(err);
 
         setChats((prev) =>
-          showError(prev, chatId, err.message)
+          showError(prev, chatId, assistantMessageId, err.message)
         );
       }
     } finally {
-      setLoading(false);
-      abortControllerRef.current = null;
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+        abortControllerRef.current = null;
+      }
     }
   }
 
@@ -170,7 +160,7 @@ export default function useChat(message, setMessage) {
     currentChatId,
     setCurrentChatId,
     loading,
-    setLoading,
+    canSend,
     createNewChat,
     deleteChat,
     sendMessage,

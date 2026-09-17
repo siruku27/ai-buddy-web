@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import ChatMessage from "../components/ChatMessage";
 import ChatHeader from "../components/ChatHeader";
 import ChatWindow from "../components/ChatWindow";
@@ -7,7 +7,6 @@ import ChatInput from "../components/ChatInput";
 import Sidebar from "../components/Sidebar";
 import MemoryPanel from "../components/MemoryPanel";
 import useChat from "../hooks/useChat";
-import useLocalStorage from "../hooks/useLocalStorage";
 import useTheme from "../hooks/useTheme";
 import useAutoScroll from "../hooks/useAutoScroll";
 import useImageUpload from "../hooks/useImageUpload";
@@ -31,19 +30,13 @@ export default function Home() {
     setCurrentChatId,
 
     loading,
-    setLoading,
+    canSend,
 
     createNewChat,
     deleteChat,
     sendMessage,
     stopGenerating,
   } = useChat(message, setMessage);
-
-  useLocalStorage(
-    "chats",
-    chats,
-    setChats
-  );
 
   useAutoScroll(
     messagesEndRef,
@@ -93,6 +86,7 @@ export default function Home() {
             sendMessage={sendMessage}
             stopGenerating={stopGenerating}
             loading={loading}
+            canSend={canSend}
             image={image}
             selectImage={selectImage}
             removeImage={removeImage}

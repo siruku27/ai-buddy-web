@@ -1,8 +1,23 @@
-import { useState } from "react";
+import { Children, cloneElement, isValidElement, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+
+function preserveParagraphBreaks(children) {
+  const nodes = Children.toArray(children);
+
+  return nodes.map((child, index) => {
+    // Markdownの明示的な改行は<br>と改行文字になるため、二重改行を防ぐ。
+    if (typeof child === "string" && nodes[index - 1]?.type === "br") {
+      return child.replace(/^\n/, "");
+    }
+    if (isValidElement(child) && child.type !== "code" && child.props.children) {
+      return cloneElement(child, {}, preserveParagraphBreaks(child.props.children));
+    }
+    return child;
+  });
+}
 
 export default function ChatMessage({
   darkMode,
@@ -74,6 +89,11 @@ export default function ChatMessage({
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
+        ...(isUser ? {
+          p: ({ children }) => (
+            <p className="whitespace-pre-wrap">{preserveParagraphBreaks(children)}</p>
+          ),
+        } : {}),
         code({ className, children, ...props }) {
           const match = /language-(\w+)/.exec(className || "");
 

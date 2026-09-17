@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import ImagePreview from "./ImagePreview";
 import ImageButton from "./ImageButton";
 import SendButton from "./SendButton";
@@ -13,6 +12,7 @@ export default function ChatInput({
   sendMessage,
   stopGenerating,
   loading,
+  canSend,
   image,
   selectImage,
   removeImage,
@@ -23,10 +23,14 @@ export default function ChatInput({
     clearImage,
     handleSend,
     handleKeyDown,
+    handleCompositionStart,
+    handleCompositionEnd,
   } = useChatInput({
     image,
     removeImage,
     sendMessage,
+    loading,
+    canSend,
   });
 
   return (
@@ -51,12 +55,18 @@ export default function ChatInput({
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="メッセージを入力... (Enterで送信、Shift + Enterで改行)"
+        onCompositionStart={handleCompositionStart}
+        onCompositionEnd={handleCompositionEnd}
+        disabled={!canSend}
+        placeholder={canSend
+          ? "メッセージを入力... (Enterで送信、Shift + Enterで改行)"
+          : "新しいチャットを作成してください"}
       />
       <SendButton
         loading={loading}
         disabled={
           loading ||
+          !canSend ||
           (!message.trim() && !image)
         }
         onSend={handleSend}

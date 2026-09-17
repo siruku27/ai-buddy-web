@@ -28,7 +28,8 @@ export function appendUserMessage(
   prevChats,
   chatId,
   currentMessage,
-  imageUrl
+  imageUrl,
+  assistantMessageId
 ) {
   return prevChats.map((chat) => {
     if (chat.id !== chatId) return chat;
@@ -51,6 +52,7 @@ export function appendUserMessage(
           image: imageUrl,
         },
         {
+          id: assistantMessageId,
           role: "assistant",
           content: "",
           loading: true,
@@ -62,18 +64,17 @@ export function appendUserMessage(
 export function updateAIMessage(
   prevChats,
   chatId,
+  assistantMessageId,
   aiReply
 ) {
   return prevChats.map((chat) => {
     if (chat.id !== chatId) return chat;
 
-    const messages = [...chat.messages];
-
-    messages[messages.length - 1] = {
-      role: "assistant",
-      content: aiReply,
-      loading: false,
-    };
+    const messages = chat.messages.map((message) =>
+      message.id === assistantMessageId && message.role === "assistant"
+        ? { ...message, content: aiReply, loading: false }
+        : message
+    );
 
     return {
       ...chat,
@@ -84,22 +85,8 @@ export function updateAIMessage(
 export function showError(
   prevChats,
   chatId,
+  assistantMessageId,
   message = "エラーが発生しました。"
 ) {
-  return prevChats.map((chat) => {
-    if (chat.id !== chatId) return chat;
-
-    const messages = [...chat.messages];
-
-    messages[messages.length - 1] = {
-      role: "assistant",
-      content: message,
-      loading: false,
-    };
-
-    return {
-      ...chat,
-      messages,
-    };
-  });
+  return updateAIMessage(prevChats, chatId, assistantMessageId, message);
 }
